@@ -1,11 +1,11 @@
-from services.embedding_service import generate_embedding
+from config.database import articles
 
-text = """
-OpenAI has launched GPT-5.5 with better coding and reasoning.
-"""
+article = articles.find_one({
+    "embedding": {
+        "$exists": True,
+        "$ne": []
+    }
+})
 
-embedding = generate_embedding(text)
-
-print("Embedding Length:", len(embedding))
-print("First 10 values:")
-print(embedding[:10])
+print(len(article["embedding"]))
+print(article["embedding"])

@@ -57,7 +57,10 @@ def fetch_rss_news():
 
                 ai_result = analyze_article(content)
 
-                summary = ai_result.get("summary", "")
+                summary = ai_result.get("summary", [])
+
+                if isinstance(summary, str):
+                    summary = [summary]
                 keywords = ai_result.get("keywords", [])
                 sentiment = ai_result.get("sentiment", "Neutral")
 
