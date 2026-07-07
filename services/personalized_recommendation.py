@@ -7,13 +7,6 @@ EXPECTED_DIMENSION = 384
 
 def personalized_recommendations(user_embedding, limit=20):
 
-    if len(user_embedding) != EXPECTED_DIMENSION:
-        raise ValueError(
-            f"Expected embedding length {EXPECTED_DIMENSION}, got {len(user_embedding)}"
-        )
-
-def personalized_recommendations(user_embedding, limit=20):
-
     recommendations = []
 
     cursor = articles.find()
@@ -30,21 +23,23 @@ def personalized_recommendations(user_embedding, limit=20):
             np.array(embedding).reshape(1, -1)
         )[0][0]
 
-        recommendations.append({
+        article_data = dict(article)
 
-            "_id": str(article["_id"]),
+        # Convert ObjectId to string
+        article_data["_id"] = str(article_data["_id"])
 
-            "title": article["title"],
+        # Rename url -> sourceUrl for React
+        article_data["sourceUrl"] = article_data.get("url", "")
 
-            "category": article.get("category"),
+        # Remove fields frontend doesn't need
+        article_data.pop("url", None)
+        article_data.pop("embedding", None)
+        article_data.pop("__v", None)
 
-            "summary": article.get("summary"),
+        # Add recommendation score
+        article_data["score"] = float(score)
 
-            "image": article.get("image"),
-
-            "score": float(score)
-
-        })
+        recommendations.append(article_data)
 
     recommendations.sort(
         key=lambda x: x["score"],

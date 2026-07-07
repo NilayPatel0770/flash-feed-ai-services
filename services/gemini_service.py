@@ -48,3 +48,35 @@ def analyze_article(content):
     text = text.replace("```json", "").replace("```", "").strip()
 
     return json.loads(text)
+
+def classify_category(content):
+
+    prompt = f"""
+You are a news classifier.
+
+Choose ONLY ONE category from this list:
+
+- Technology
+- Business
+- Sports
+- Health
+- Science
+- Politics
+- Entertainment
+- Artificial Intelligence
+- Cyber Security
+- Startups
+- General
+
+Return ONLY the category name.
+
+News:
+{content}
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return response.text.strip()

@@ -2,8 +2,12 @@ import feedparser
 
 from config.database import articles
 
-from services.gemini_service import analyze_article
+from services.gemini_service import (
+    analyze_article,
+    classify_category
+)
 from services.embedding_service import generate_embedding
+from services.article_parser import extract_article_data
 
 RSS_FEEDS = [
     "https://feeds.bbci.co.uk/news/rss.xml",
@@ -11,7 +15,7 @@ RSS_FEEDS = [
     "https://feeds.reuters.com/reuters/topNews"
 ]
 
-MAX_ARTICLES = 1
+MAX_ARTICLES = 30
 
 
 def fetch_rss_news():
@@ -40,6 +44,16 @@ def fetch_rss_news():
                 or item.get("description")
                 or title
             )
+
+            article_data = extract_article_data(link)
+
+            image = article_data["image"]
+
+            author = article_data["author"]
+
+            # Prefer full article content when available
+            if article_data["content"]:
+                content = article_data["content"]
             
             existing = articles.find_one({"url": link})
 
@@ -56,6 +70,10 @@ def fetch_rss_news():
             try:
 
                 ai_result = analyze_article(content)
+                try:
+                    category = classify_category(content)
+                except Exception:
+                    category = "General"
 
                 summary = ai_result.get("summary", [])
 
@@ -68,7 +86,9 @@ def fetch_rss_news():
 
                 print(f"Gemini Error: {e}")
 
-                summary = ""
+                summary = [
+                            item.get("summary", "")[:250]
+                        ]
                 keywords = []
                 sentiment = "Neutral"
 
@@ -90,15 +110,18 @@ def fetch_rss_news():
                     {"url": link},
                     {
                         "$set": {
-                            "title": title,
-                            "description": content,
-                            "content": content,
-                            "source": feed.feed.get("title", "RSS"),
-                            "summary": summary,
-                            "keywords": keywords,
-                            "sentiment": sentiment,
-                            "embedding": embedding,
-                        }
+                        "title": title,
+                        "description": content,
+                        "content": content,
+                        "source": feed.feed.get("title", "RSS"),
+                        "category": category,
+                        "image": image,
+                        "author": author,
+                        "summary": summary,
+                        "keywords": keywords,
+                        "sentiment": sentiment,
+                        "embedding": embedding
+                    }
                     }
                 )
 
@@ -113,27 +136,17 @@ def fetch_rss_news():
                     "title": title,
                     "description": content,
                     "content": content,
-
                     "url": link,
-
                     "source": feed.feed.get("title", "RSS"),
-
-                    "category": "General",
-
-                    "image": "",
-
+                    "category": category,
+                    "image": image,
+                    "author": author,
                     "summary": summary,
-
                     "keywords": keywords,
-
                     "sentiment": sentiment,
-
                     "embedding": embedding,
-
                     "views": 0,
-
                     "likes": 0,
-
                     "bookmarks": 0
                 }
 

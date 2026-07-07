@@ -36,22 +36,23 @@ def recommend_articles(article_id, limit=10):
             np.array(embedding).reshape(1, -1)
         )[0][0]
 
-        recommendations.append({
+        article = dict(news)
 
-            "_id": str(news["_id"]),
+        # Convert Mongo ObjectId to string
+        article["_id"] = str(article["_id"])
 
-            "title": news["title"],
+        # Rename url -> sourceUrl for React
+        article["sourceUrl"] = article.get("url", "")
 
-            "category": news.get("category", ""),
+        # Remove fields frontend doesn't need
+        article.pop("url", None)
+        article.pop("embedding", None)
+        article.pop("__v", None)
 
-            "summary": news.get("summary", ""),
+        # Add similarity score
+        article["score"] = float(score)
 
-            "image": news.get("image", ""),
-
-            "score": round(float(score), 4)
-
-        })
-
+        recommendations.append(article)
     recommendations.sort(
         key=lambda x: x["score"],
         reverse=True
