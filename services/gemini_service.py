@@ -9,14 +9,17 @@ client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
+
 def analyze_article(content):
 
     prompt = f"""
-    Analyze the following news article.
+You are an AI News Analyzer.
 
-    Return ONLY valid JSON.
+Analyze the following news article.
 
-    {{
+Return ONLY valid JSON.
+
+{{
     "summary": [
         "Point 1",
         "Point 2",
@@ -29,48 +32,26 @@ def analyze_article(content):
         "keyword4",
         "keyword5"
     ],
-    "sentiment": "Positive"
-    }}
+    "sentiment": "Positive",
+    "category": "Technology"
+}}
 
-    Article:
+Choose category ONLY from:
 
-    {content}
-    """
+Technology
+Business
+Sports
+Health
+Science
+Politics
+Entertainment
+Artificial Intelligence
+Cyber Security
+Startups
+General
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
+Article:
 
-    text = response.text.strip()
-
-    # Remove markdown if Gemini returns ```json
-    text = text.replace("```json", "").replace("```", "").strip()
-
-    return json.loads(text)
-
-def classify_category(content):
-
-    prompt = f"""
-You are a news classifier.
-
-Choose ONLY ONE category from this list:
-
-- Technology
-- Business
-- Sports
-- Health
-- Science
-- Politics
-- Entertainment
-- Artificial Intelligence
-- Cyber Security
-- Startups
-- General
-
-Return ONLY the category name.
-
-News:
 {content}
 """
 
@@ -79,4 +60,8 @@ News:
         contents=prompt
     )
 
-    return response.text.strip()
+    text = response.text.strip()
+
+    text = text.replace("```json", "").replace("```", "").strip()
+
+    return json.loads(text)

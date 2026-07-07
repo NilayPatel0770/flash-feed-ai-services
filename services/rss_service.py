@@ -1,164 +1,32 @@
-import feedparser
-
-from config.database import articles
-
-from services.gemini_service import (
-    analyze_article,
-    classify_category
-)
-from services.embedding_service import generate_embedding
-from services.article_parser import extract_article_data
-
 RSS_FEEDS = [
-    "https://feeds.bbci.co.uk/news/rss.xml",
-    "https://techcrunch.com/feed/",
-    "https://feeds.reuters.com/reuters/topNews"
-]
-
-MAX_ARTICLES = 30
-
-
-def fetch_rss_news():
-
-    inserted = 0
-    updated = 0
-
-    for feed_url in RSS_FEEDS:
-
-        print(f"\nFetching: {feed_url}")
-
-        feed = feedparser.parse(feed_url)
-
-        count = 0
-
-        for item in feed.entries:
-
-            if count >= MAX_ARTICLES:
-                break
-
-            title = item.get("title", "")
-            link = item.get("link", "")
-
-            content = (
-                item.get("summary")
-                or item.get("description")
-                or title
-            )
-
-            article_data = extract_article_data(link)
-
-            image = article_data["image"]
-
-            author = article_data["author"]
-
-            # Prefer full article content when available
-            if article_data["content"]:
-                content = article_data["content"]
-            
-            existing = articles.find_one({"url": link})
-
-            # Skip if article is already fully processed
-            if (
-            existing
-            and existing.get("summary")
-            and len(existing.get("embedding", [])) > 0
-            ):
-                print(f"Skipping AI processing: {title}")
-                count += 1
-                continue
-
-            try:
-
-                ai_result = analyze_article(content)
-                try:
-                    category = classify_category(content)
-                except Exception:
-                    category = "General"
-
-                summary = ai_result.get("summary", [])
-
-                if isinstance(summary, str):
-                    summary = [summary]
-                keywords = ai_result.get("keywords", [])
-                sentiment = ai_result.get("sentiment", "Neutral")
-
-            except Exception as e:
-
-                print(f"Gemini Error: {e}")
-
-                summary = [
-                            item.get("summary", "")[:250]
-                        ]
-                keywords = []
-                sentiment = "Neutral"
-
-            try:
-
-                embedding = generate_embedding(content)
-
-            except Exception as e:
-
-                print(f"Embedding Error: {e}")
-
-                embedding = []
-
-            existing = articles.find_one({"url": link})
-
-            if existing:
-
-                articles.update_one(
-                    {"url": link},
-                    {
-                        "$set": {
-                        "title": title,
-                        "description": content,
-                        "content": content,
-                        "source": feed.feed.get("title", "RSS"),
-                        "category": category,
-                        "image": image,
-                        "author": author,
-                        "summary": summary,
-                        "keywords": keywords,
-                        "sentiment": sentiment,
-                        "embedding": embedding
-                    }
-                    }
-                )
-
-                updated += 1
-
-                print(f"Updated: {title}")
-
-            else:
-
-                article = {
-
-                    "title": title,
-                    "description": content,
-                    "content": content,
-                    "url": link,
-                    "source": feed.feed.get("title", "RSS"),
-                    "category": category,
-                    "image": image,
-                    "author": author,
-                    "summary": summary,
-                    "keywords": keywords,
-                    "sentiment": sentiment,
-                    "embedding": embedding,
-                    "views": 0,
-                    "likes": 0,
-                    "bookmarks": 0
-                }
-
-                articles.insert_one(article)
-
-                inserted += 1
-
-                print(f"Inserted: {title}")
-
-            count += 1
-
-    return {
-        "inserted": inserted,
-        "updated": updated
+    {
+        "source": "BBC",
+        "category": "General",
+        "url": "https://feeds.bbci.co.uk/news/rss.xml"
+    },
+    {
+        "source": "TechCrunch",
+        "category": "Technology",
+        "url": "https://techcrunch.com/feed/"
+    },
+    {
+        "source": "The Guardian",
+        "category": "General",
+        "url": "https://www.theguardian.com/world/rss"
+    },
+    {
+        "source": "ESPN",
+        "category": "Sports",
+        "url": "https://www.espn.com/espn/rss/news"
+    },
+    {
+        "source": "NDTV",
+        "category": "General",
+        "url": "https://feeds.feedburner.com/ndtvnews-top-stories"
+    },
+    {
+        "source": "The Hindu",
+        "category": "General",
+        "url": "https://www.thehindu.com/news/national/feeder/default.rss"
     }
+]
